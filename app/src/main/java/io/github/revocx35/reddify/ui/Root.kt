@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
@@ -247,9 +249,15 @@ private fun NowPlaying(onClose: () -> Unit, onQueue: () -> Unit) {
     BackHandler(onBack = onClose)
     val t = ui.current ?: run { onClose(); return }
     var drag by remember { mutableStateOf<Float?>(null) }
-    Column(
+    // Large or nearly square screens (unfolded foldables, tablets, landscape): the controls keep a phone-like width in the
+    // middle, and the cover takes only the height that is left, so title, seek bar and buttons always stay on screen.
+    Box(
         Modifier.fillMaxSize().background(Brush.verticalGradient(0f to Color(0xFF6B1520), 0.55f to Color(0xFF1A0508), 1f to Color.Black))
-            .statusBarsPadding().navigationBarsPadding().padding(horizontal = 24.dp, vertical = 8.dp),
+            .statusBarsPadding().navigationBarsPadding(),
+        contentAlignment = Alignment.TopCenter,
+    ) {
+    Column(
+        Modifier.fillMaxHeight().widthIn(max = 560.dp).padding(horizontal = 24.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -258,9 +266,9 @@ private fun NowPlaying(onClose: () -> Unit, onQueue: () -> Unit) {
                 modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center, style = MaterialTheme.typography.bodySmall)
             IconButton(onClick = onQueue) { RIcon(RIcons.queue, 24.dp) }
         }
-        Spacer(Modifier.weight(0.3f))
-        Cover(t.cover?.let(::bigCover), t.id, null, RoundedCornerShape(8.dp), Modifier.fillMaxWidth())
-        Spacer(Modifier.weight(0.3f))
+        Box(Modifier.weight(1f).fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
+            Cover(t.cover?.let(::bigCover), t.id, null, RoundedCornerShape(8.dp))
+        }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(t.name, color = R.text, style = MaterialTheme.typography.headlineMedium, maxLines = 1, overflow = TextOverflow.Ellipsis,
@@ -300,7 +308,7 @@ private fun NowPlaying(onClose: () -> Unit, onQueue: () -> Unit) {
             CastButton()
             Text(device?.let { "Playing on $it" } ?: ui.error ?: "", color = if (ui.error != null && device == null) R.danger else R.accent, style = MaterialTheme.typography.bodySmall)
         }
-        Spacer(Modifier.weight(0.2f))
+    }
     }
 }
 

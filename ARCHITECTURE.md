@@ -22,7 +22,7 @@ Client of the Reddify server (API contract: `shared/api.d.ts` in revocx35/reddif
     muted and track changes / play / pause / seek are repeated on the Chromecast, which loads the server's signed
     `/cast/<token>` URL.
   - `playback/PlayerConnection.kt` — UI side: a `MediaController` exposed as a `StateFlow<PlayerUi>`.
-  - `ui/` — Compose: `Root.kt` (sign-in gate, navigation, mini player, now playing, queue, cast button),
+  - `ui/` — Compose: `Root.kt` (sign-in gate, navigation, mini player, now playing (adaptive: width capped, cover shrinks to fit on foldables/landscape), queue, cast button),
     `screens/Browse.kt` (home, search, album, artist, playlist + "Save as my playlist"), `screens/Library.kt`
     (pencil = edit mode: ✕ deletes an own playlist after a confirm, or hides a Spotify playlist/album/artist in Reddify
     only via `PUT /api/library/hidden/{kind}/{id}`; Spotify keeps it; "Removed" lists them with Restore),

@@ -13,7 +13,7 @@ Native client for the Reddify server (github.com/revocx35/reddify). Read [ARCHIT
 
 ## Commands
 ```bash
-./gradlew --max-workers=1 :core:test :app:testDebugUnitTest                                 # 7 + 2 tests
+./gradlew --max-workers=1 :core:test :app:testDebugUnitTest                                 # 7 + 4 tests (screenshots: phone, unfolded foldable, landscape)
 ./gradlew --max-workers=1 :app:testDebugUnitTest -Proborazzi.test.record=true --rerun-tasks # screenshots in app/build/screens
 ./gradlew --max-workers=1 :app:assembleRelease
 ```
@@ -33,6 +33,8 @@ and copy it to the server repo's `web/public/reddify.apk` before building the se
 - Commit `keystore.properties`, `local.properties` or keys.
 
 ## Gotchas
+- Big/near-square screens (unfolded Z Fold, tablets, landscape): the now-playing screen caps its width (560 dp) and the cover only takes the height left over; never size the cover from the screen width again (0.3.2 and older pushed the controls off the Fold's inner screen). `ScreenshotTest` covers these sizes with `assertIsDisplayed` on the controls.
+- `app/src/debug/AndroidManifest.xml` gives the Compose test host the app theme: the Cast `MediaRouteButton` throws "background can not be translucent" otherwise (tests only; release unaffected).
 - Lazy list `key`s must be unique among items on screen together, or Compose throws "Key … was already used": Spotify repeats cards (same track twice in a row in a home shelf crashed 0.2.0–0.3.1 while scrolling; a doubled library item crashed 0.3.0). Dedupe before keying; home shelves are keyed by position, not title.
 - Robolectric gives Media3's MediaController a null ComponentName: `PlayerConnection` skips connecting there.
 - The Cast route picker needs AppCompat (`MainActivity : AppCompatActivity`, theme `Theme.AppCompat.NoActionBar`).

@@ -36,6 +36,11 @@ class PlayerConnection(context: Context, private val scope: CoroutineScope) {
     private var controller: MediaController? = null
     private val _ui = MutableStateFlow(PlayerUi())
     val ui: StateFlow<PlayerUi> = _ui.asStateFlow()
+
+    /** Tests only: Robolectric cannot connect the MediaController, so screenshot tests set the player state directly. */
+    fun showForTests(state: PlayerUi) {
+        _ui.value = state
+    }
     private var contextName: String? = null
     private var contextId: String? = null
     private val pending = mutableListOf<(MediaController) -> Unit>()

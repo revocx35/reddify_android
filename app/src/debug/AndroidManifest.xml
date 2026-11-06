@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug/test builds only: the Compose test host gets the app theme, because the Cast button (MediaRouteButton)
+     refuses a translucent window background ("background can not be translucent") in Robolectric screenshot tests. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
+    <application>
+        <activity android:name="androidx.activity.ComponentActivity" android:theme="@style/Theme.Reddify" tools:replace="android:theme" />
+    </application>
+</manifest>

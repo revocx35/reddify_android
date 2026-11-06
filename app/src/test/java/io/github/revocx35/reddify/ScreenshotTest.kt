@@ -6,6 +6,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import androidx.compose.ui.test.performScrollToIndex
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
@@ -45,6 +46,23 @@ class ScreenshotTest {
         val dupCards = kotlinx.serialization.json.JsonObject(first + ("items" to kotlinx.serialization.json.JsonArray(listOf(firstItems[0], firstItems[0]) + firstItems.drop(1))))
         val all = kotlinx.serialization.json.JsonArray(listOf(dupCards) + sections.drop(1) + first)
         return kotlinx.serialization.json.JsonObject(home + ("sections" to all)).toString()
+    }
+
+
+    /** Opens the full-screen player with a song "playing" (the MediaController does not connect under Robolectric). */
+    private fun openNowPlaying(app: ReddifyApp, file: String) {
+        val t = io.github.revocx35.reddify.core.Track(
+            id = "0DiWol3AO6WpXZgp0goxAV", name = "One More Time", durationMs = 320_000,
+            artists = listOf(io.github.revocx35.reddify.core.ArtistRef("4tZwfgrHOc3mvqYlEYSvVi", "Daft Punk")),
+            album = io.github.revocx35.reddify.core.AlbumRef("2noRn2Aes5aoNVsU6iWThc", "Discovery"),
+        )
+        app.player.showForTests(io.github.revocx35.reddify.playback.PlayerUi(current = t, positionMs = 95_000, durationMs = 320_000, queue = listOf(t), index = 0, contextName = "Discovery"))
+        compose.waitUntil(5_000) { compose.onAllNodes(androidx.compose.ui.test.hasText("One More Time")).fetchSemanticsNodes().isNotEmpty() }
+        compose.onAllNodes(androidx.compose.ui.test.hasText("One More Time"))[0].performClick()
+        compose.waitUntil(5_000) { compose.onAllNodes(androidx.compose.ui.test.hasText("5:20")).fetchSemanticsNodes().isNotEmpty() }
+        // The controls must be on screen, not pushed below it by the cover.
+        compose.onNodeWithText("5:20").assertIsDisplayed()
+        compose.onRoot().captureRoboImage("build/screens/$file")
     }
 
     @Before fun start() {
@@ -90,6 +108,7 @@ class ScreenshotTest {
         compose.waitUntil(5_000) { compose.onAllNodes(androidx.compose.ui.test.hasText("Removed (1)")).fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithContentDescription("Remove Road trip from Your Library").assertExists()
         compose.onRoot().captureRoboImage("build/screens/library-edit.png")
+        openNowPlaying(app, "nowplaying.png")
     }
 
     @Test fun album() {
@@ -99,5 +118,32 @@ class ScreenshotTest {
         compose.onAllNodes(androidx.compose.ui.test.hasText("Manifesto"))[0].performClick()
         compose.waitUntil(10_000) { compose.onAllNodes(androidx.compose.ui.test.hasText("One More Time")).fetchSemanticsNodes().isNotEmpty() }
         compose.onRoot().captureRoboImage("build/screens/album.png")
+    }
+
+    /** Unfolded Galaxy Z Fold7-class inner screen (about 884 x 980 dp, nearly square). */
+    @Config(qualifiers = "w884dp-h980dp-xhdpi")
+    @Test fun foldable() = bigScreen("fold")
+
+    /** Phone turned sideways: very little height. */
+    @Config(qualifiers = "w844dp-h390dp-xxhdpi")
+    @Test fun landscape() {
+        val app = ApplicationProvider.getApplicationContext<ReddifyApp>()
+        compose.setContent { ReddifyRoot(app.graph, app.player) }
+        compose.waitUntil(15_000) { compose.onAllNodes(androidx.compose.ui.test.hasText("Trending songs")).fetchSemanticsNodes().isNotEmpty() }
+        openNowPlaying(app, "landscape-nowplaying.png")
+    }
+
+    private fun bigScreen(prefix: String) {
+        val app = ApplicationProvider.getApplicationContext<ReddifyApp>()
+        compose.setContent { ReddifyRoot(app.graph, app.player) }
+        compose.waitUntil(15_000) { compose.onAllNodes(androidx.compose.ui.test.hasText("Trending songs")).fetchSemanticsNodes().isNotEmpty() }
+        compose.onRoot().captureRoboImage("build/screens/$prefix-home.png")
+        compose.onAllNodes(androidx.compose.ui.test.hasText("Manifesto"))[0].performClick()
+        compose.waitUntil(10_000) { compose.onAllNodes(androidx.compose.ui.test.hasText("One More Time")).fetchSemanticsNodes().isNotEmpty() }
+        compose.onRoot().captureRoboImage("build/screens/$prefix-album.png")
+        compose.onNodeWithText("Your Library").performClick()
+        compose.waitUntil(10_000) { compose.onAllNodes(androidx.compose.ui.test.hasText("On this phone")).fetchSemanticsNodes().isNotEmpty() }
+        compose.onRoot().captureRoboImage("build/screens/$prefix-library.png")
+        openNowPlaying(app, "$prefix-nowplaying.png")
     }
 }
