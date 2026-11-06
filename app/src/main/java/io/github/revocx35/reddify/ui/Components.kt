@@ -17,11 +17,15 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -30,6 +34,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -49,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.SubcomposeAsyncImage
 import io.github.revocx35.reddify.core.Card
+import io.github.revocx35.reddify.core.CoverRef
 import io.github.revocx35.reddify.core.Track
 import io.github.revocx35.reddify.data.AppGraph
 import io.github.revocx35.reddify.playback.PlayerConnection
@@ -142,7 +148,7 @@ fun OfflineBanner() = Row(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun TrackRow(t: Track, list: List<Track>, index: Int, contextName: String?, contextId: String?, showCover: Boolean = true, number: Int? = null) {
+fun TrackRow(t: Track, list: List<Track>, index: Int, contextName: String?, contextId: String?, showCover: Boolean = true, number: Int? = null, extra: List<MenuAction> = emptyList()) {
     val env = LocalEnv.current
     val ui by env.player.ui.collectAsState()
     val active = ui.current?.id == t.id
@@ -178,22 +184,29 @@ fun TrackRow(t: Track, list: List<Track>, index: Int, contextName: String?, cont
         }
         Box {
             IconButton(onClick = { menu = true }) { RIcon(RIcons.more, 20.dp, tint = R.sub) }
-            TrackMenu(t, menu) { menu = false }
+            TrackMenu(t, menu, extra) { menu = false }
         }
     }
 }
 
+/** An extra entry for a track's menu (e.g. "Remove from this playlist" on the user's own playlists). */
+class MenuAction(val label: String, val icon: ImageVector, val run: () -> Unit)
+
 @Composable
-fun TrackMenu(t: Track, open: Boolean, onDismiss: () -> Unit) {
+fun TrackMenu(t: Track, open: Boolean, extra: List<MenuAction> = emptyList(), onDismiss: () -> Unit) {
     val env = LocalEnv.current
     val liked = t.id in env.graph.likes.ids.collectAsState().value
     val onPhone = env.graph.offline.tracks.collectAsState().value.any { it.id == t.id }
+    var picker by remember { mutableStateOf(false) }
+    if (picker) AddToPlaylistDialog(listOf(t.id)) { picker = false }
     DropdownMenu(expanded = open, onDismissRequest = onDismiss, containerColor = R.elev2) {
         @Composable fun item(label: String, icon: ImageVector, fn: () -> Unit) = DropdownMenuItem(
             text = { Text(label, color = R.text) },
             leadingIcon = { RIcon(icon, 18.dp, tint = R.sub) },
             onClick = { onDismiss(); fn() },
         )
+        item("Add to playlist", RIcons.playlistAdd) { picker = true }
+        for (x in extra) item(x.label, x.icon, x.run)
         item("Play next", RIcons.queue) { env.player.playNext(t) }
         item("Add to queue", RIcons.plus) { env.player.addToQueue(t) }
         item(if (liked) "Remove from Liked Songs" else "Save to Liked Songs", if (liked) RIcons.heartFill else RIcons.heart) { env.graph.likes.toggle(t.id) }
@@ -240,3 +253,64 @@ fun Chip(label: String, on: Boolean, onClick: () -> Unit) = Text(
     style = MaterialTheme.typography.bodyMedium,
     modifier = Modifier.clip(RoundedCornerShape(50)).background(if (on) R.text else R.elev2).clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 7.dp),
 )
+
+/** A Reddify playlist's cover: 2x2 mosaic of four album covers, else the first cover, else a note tile. */
+@Composable
+fun PlaylistCover(covers: List<CoverRef>, size: Dp) {
+    if (covers.size >= 4) {
+        val half = size / 2
+        Column(Modifier.size(size).clip(RoundedCornerShape(4.dp))) {
+            for (row in covers.take(4).chunked(2)) Row { for (c in row) Cover(c.url, c.trackId, half, RoundedCornerShape(0.dp)) }
+        }
+    } else {
+        val c = covers.firstOrNull()
+        Cover(c?.url, c?.trackId, size)
+    }
+}
+
+/** "Add to playlist": a new playlist, then the user's playlists (check = the song is already in it). */
+@Composable
+fun AddToPlaylistDialog(ids: List<String>, onDismiss: () -> Unit) {
+    val env = LocalEnv.current
+    val lists by env.graph.playlists.list.collectAsState()
+    var has by remember { mutableStateOf<Set<Long>>(emptySet()) }
+    LaunchedEffect(ids) {
+        env.graph.playlists.refresh()
+        if (ids.size == 1) runCatching { has = env.graph.api.value.trackPlaylists(ids[0]).toSet() }
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = R.elev2,
+        title = { Text("Add to playlist", color = R.text) },
+        text = {
+            LazyColumn(Modifier.heightIn(max = 420.dp)) {
+                item {
+                    Row(
+                        Modifier.fillMaxWidth().clickable { onDismiss(); env.graph.playlists.create(ids) { env.nav("my/${it.id}") } }.padding(vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(Modifier.size(48.dp).clip(RoundedCornerShape(4.dp)).background(R.elev3), contentAlignment = Alignment.Center) { RIcon(RIcons.plus, 24.dp) }
+                        Spacer(Modifier.width(12.dp))
+                        Text("New playlist", color = R.text, fontWeight = FontWeight.Bold)
+                    }
+                    HorizontalDivider(color = R.elev3)
+                }
+                items(lists, key = { it.id }) { p ->
+                    Row(
+                        Modifier.fillMaxWidth().clickable { onDismiss(); env.graph.playlists.add(p, ids) }.padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        PlaylistCover(p.covers, 48.dp)
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(p.name, color = R.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text("${p.count} songs", color = R.sub, style = MaterialTheme.typography.bodySmall)
+                        }
+                        if (p.id in has) RIcon(RIcons.check, 20.dp, tint = R.accent)
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Cancel", color = R.text) } },
+    )
+}

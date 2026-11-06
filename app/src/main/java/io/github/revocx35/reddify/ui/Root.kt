@@ -74,6 +74,7 @@ import io.github.revocx35.reddify.ui.screens.ArtistScreen
 import io.github.revocx35.reddify.ui.screens.HomeScreen
 import io.github.revocx35.reddify.ui.screens.LibraryScreen
 import io.github.revocx35.reddify.ui.screens.LikedScreen
+import io.github.revocx35.reddify.ui.screens.MyPlaylistScreen
 import io.github.revocx35.reddify.ui.screens.OnPhoneScreen
 import io.github.revocx35.reddify.ui.screens.PlaylistScreen
 import io.github.revocx35.reddify.ui.screens.RecentScreen
@@ -121,7 +122,7 @@ fun ReddifyRoot(graph: AppGraph, player: PlayerConnection) = ReddifyTheme {
             checking = false
         }
     }
-    LaunchedEffect(auth) { if (auth?.me != null) graph.likes.load() }
+    LaunchedEffect(auth) { if (auth?.me != null) { graph.likes.load(); graph.playlists.refresh() } }
     Box(Modifier.fillMaxSize().background(R.panel)) {
         when {
             checking -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Logo(72.dp) }
@@ -158,6 +159,7 @@ private fun MainShell(graph: AppGraph, player: PlayerConnection, displayName: St
                 composable("album/{id}", listOf(navArgument("id") { type = NavType.StringType })) { AlbumScreen(it.arguments?.getString("id") ?: "") }
                 composable("artist/{id}", listOf(navArgument("id") { type = NavType.StringType })) { ArtistScreen(it.arguments?.getString("id") ?: "") }
                 composable("playlist/{id}", listOf(navArgument("id") { type = NavType.StringType })) { PlaylistScreen(it.arguments?.getString("id") ?: "") }
+                composable("my/{id}", listOf(navArgument("id") { type = NavType.LongType })) { MyPlaylistScreen(it.arguments?.getLong("id") ?: 0L) }
             }
             Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
                 MiniPlayer { expanded = true }

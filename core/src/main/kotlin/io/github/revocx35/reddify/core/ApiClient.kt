@@ -6,6 +6,8 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import okhttp3.HttpUrl
@@ -123,6 +125,26 @@ class ApiClient(private val http: OkHttpClient, val base: HttpUrl, @Volatile var
     suspend fun downloads(q: String, offset: Int) = get("/api/library/downloads?q=${enc(q)}&offset=$offset", TrackPage.serializer())
     suspend fun recent() = get("/api/library/recent", ListSerializer(Track.serializer()))
     suspend fun spotifyLiked(offset: Int) = get("/api/library/spotify-liked?offset=$offset", TrackPage.serializer())
+
+    // own playlists
+    suspend fun myPlaylists() = get("/api/playlists", ListSerializer(MyPlaylist.serializer()))
+    suspend fun myPlaylist(id: Long) = get("/api/playlists/$id", MyPlaylistResponse.serializer())
+    suspend fun createPlaylist(name: String? = null, tracks: List<String> = emptyList()): MyPlaylistResponse {
+        val b = buildJsonObject {
+            if (name != null) put("name", name)
+            if (tracks.isNotEmpty()) put("tracks", JsonArray(tracks.map { JsonPrimitive(it) }))
+        }
+        return send("POST", "/api/playlists", b.toString(), MyPlaylistResponse.serializer())
+    }
+    suspend fun updatePlaylist(id: Long, name: String, description: String) =
+        send("PATCH", "/api/playlists/$id", buildJsonObject { put("name", name); put("description", description) }.toString(), MyPlaylist.serializer())
+    suspend fun deletePlaylist(id: Long) = send("DELETE", "/api/playlists/$id", "{}", ok)
+    suspend fun addToPlaylist(id: Long, ids: List<String>) =
+        send("POST", "/api/playlists/$id/tracks", buildJsonObject { put("ids", JsonArray(ids.map { JsonPrimitive(it) })) }.toString(), AddTracksResponse.serializer())
+    suspend fun removeFromPlaylist(id: Long, trackId: String) = send("DELETE", "/api/playlists/$id/tracks/${enc(trackId)}", "{}", MyPlaylist.serializer())
+    suspend fun movePlaylistTrack(id: Long, trackId: String, to: Int) =
+        send("PUT", "/api/playlists/$id/tracks/${enc(trackId)}/position", buildJsonObject { put("to", to) }.toString(), MyPlaylist.serializer())
+    suspend fun trackPlaylists(id: String) = get("/api/tracks/${enc(id)}/playlists", ListSerializer(Long.serializer()))
 
     // playback
     suspend fun prepare(id: String) = send("POST", "/api/tracks/${enc(id)}/prepare", "{}", PrepareResponse.serializer())

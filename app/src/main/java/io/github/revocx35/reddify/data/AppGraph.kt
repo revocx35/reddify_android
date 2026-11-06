@@ -1,9 +1,12 @@
 package io.github.revocx35.reddify.data
 
 import android.content.Context
+import android.widget.Toast
 import io.github.revocx35.reddify.BuildConfig
 import io.github.revocx35.reddify.core.ApiClient
 import io.github.revocx35.reddify.core.Authentik
+import io.github.revocx35.reddify.core.MyPlaylist
+import io.github.revocx35.reddify.core.userMessage
 import io.github.revocx35.reddify.core.parseServerUrl
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -50,6 +53,7 @@ class AppGraph(context: Context) {
     val api: StateFlow<ApiClient> = _api.asStateFlow()
     val offline = OfflineStore(appContext, this)
     val likes = Likes(this)
+    val playlists = MyPlaylists(this)
 
     private fun makeApi(): ApiClient =
         // No server chosen yet: a placeholder that is never contacted before the sign-in screen sets the real one.
@@ -93,6 +97,44 @@ class Likes(private val graph: AppGraph) {
         _ids.value = if (on) _ids.value + id else _ids.value - id
         graph.scope.launch {
             runCatching { graph.api.value.like(id, on) }.onFailure { _ids.value = if (on) _ids.value - id else _ids.value + id }
+        }
+    }
+}
+
+/** The user's own Reddify playlists (library list, "Add to playlist" picker). */
+class MyPlaylists(private val graph: AppGraph) {
+    private val _list = MutableStateFlow<List<MyPlaylist>>(emptyList())
+    val list: StateFlow<List<MyPlaylist>> = _list.asStateFlow()
+
+    suspend fun refresh() {
+        runCatching { _list.value = graph.api.value.myPlaylists() }
+    }
+
+    /** Most recently changed first, like the server orders them. */
+    fun upsert(p: MyPlaylist) {
+        _list.value = listOf(p) + _list.value.filter { it.id != p.id }
+    }
+
+    fun remove(id: Long) {
+        _list.value = _list.value.filter { it.id != id }
+    }
+
+    fun toast(text: String) = Toast.makeText(graph.appContext, text, Toast.LENGTH_SHORT).show()
+
+    /** Creates a playlist (optionally with songs) and calls [then] with it on success. */
+    fun create(tracks: List<String> = emptyList(), name: String? = null, then: (MyPlaylist) -> Unit = {}) {
+        graph.scope.launch {
+            runCatching { graph.api.value.createPlaylist(name, tracks) }
+                .onSuccess { upsert(it.playlist); toast(if (tracks.isEmpty()) "Created ${it.playlist.name}" else "Saved as ${it.playlist.name}"); then(it.playlist) }
+                .onFailure { toast(it.userMessage()) }
+        }
+    }
+
+    fun add(p: MyPlaylist, ids: List<String>) {
+        graph.scope.launch {
+            runCatching { graph.api.value.addToPlaylist(p.id, ids) }
+                .onSuccess { upsert(it.playlist); toast(if (it.added > 0) "Added to ${p.name}" else "Already in ${p.name}") }
+                .onFailure { toast(it.userMessage()) }
         }
     }
 }

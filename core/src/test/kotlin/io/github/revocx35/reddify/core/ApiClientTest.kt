@@ -49,6 +49,31 @@ class ApiClientTest {
         assertTrue(body.contains("\"client\":\"app\""))
     }
 
+    @Test fun `own playlists - requests and answers match the server contract`() = runBlocking {
+        val pl = """{"id":7,"name":"Road trip","description":"","count":1,"durationMs":200000,"covers":[{"url":null,"trackId":"AAAAAAAAAAAAAAAAAAAAAA"}],"createdAt":1,"updatedAt":2}"""
+        server.enqueue(json("""{"playlist":$pl,"tracks":[]}"""))
+        server.enqueue(json("""{"added":1,"playlist":$pl}"""))
+        server.enqueue(json(pl))
+        server.enqueue(json(pl))
+        server.enqueue(json("[7]"))
+        val c = client("rdf_abc")
+        assertEquals(7L, c.createPlaylist("Road trip", listOf("AAAAAAAAAAAAAAAAAAAAAA")).playlist.id)
+        val create = server.takeRequest()
+        assertEquals("POST", create.method)
+        assertEquals("/api/playlists", create.url.encodedPath)
+        assertEquals("""{"name":"Road trip","tracks":["AAAAAAAAAAAAAAAAAAAAAA"]}""", create.body!!.utf8())
+        assertEquals(1, c.addToPlaylist(7, listOf("BBBBBBBBBBBBBBBBBBBBBB")).added)
+        assertEquals("""{"ids":["BBBBBBBBBBBBBBBBBBBBBB"]}""", server.takeRequest().body!!.utf8())
+        c.movePlaylistTrack(7, "BBBBBBBBBBBBBBBBBBBBBB", 0)
+        val move = server.takeRequest()
+        assertEquals("PUT", move.method)
+        assertEquals("/api/playlists/7/tracks/BBBBBBBBBBBBBBBBBBBBBB/position", move.url.encodedPath)
+        assertEquals("""{"to":0}""", move.body!!.utf8())
+        assertEquals("Road trip", c.updatePlaylist(7, "Road trip", "").name)
+        assertEquals("PATCH", server.takeRequest().method)
+        assertEquals(listOf(7L), c.trackPlaylists("BBBBBBBBBBBBBBBBBBBBBB"))
+    }
+
     @Test fun `refuses a non Reddify server`() = runBlocking {
         server.enqueue(MockResponse.Builder().code(200).addHeader("Content-Type", "text/html").body("<html>").build())
         try { client().state(); fail() } catch (e: ApiException) { assertEquals(ApiException.NOT_REDDIFY, e.code) }

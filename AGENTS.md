@@ -13,7 +13,7 @@ Native client for the Reddify server (github.com/revocx35/reddify). Read [ARCHIT
 
 ## Commands
 ```bash
-./gradlew --max-workers=1 :core:test :app:testDebugUnitTest                                 # 5 + 2 tests
+./gradlew --max-workers=1 :core:test :app:testDebugUnitTest                                 # 6 + 2 tests
 ./gradlew --max-workers=1 :app:testDebugUnitTest -Proborazzi.test.record=true --rerun-tasks # screenshots in app/build/screens
 ./gradlew --max-workers=1 :app:assembleRelease
 ```

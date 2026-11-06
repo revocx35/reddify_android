@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -69,13 +70,21 @@ fun LibraryScreen() {
     val env = LocalEnv.current
     val lib = rememberLoad("lib") { env.graph.api.value.library() }
     val onPhone by env.graph.offline.tracks.collectAsState()
+    val mine by env.graph.playlists.list.collectAsState()
+    LaunchedEffect(Unit) { env.graph.playlists.refresh() }
     LazyColumn(contentPadding = bottomPad) {
-        item { Text("Your Library", style = MaterialTheme.typography.headlineMedium, color = R.text, modifier = Modifier.statusBarsPadding().padding(16.dp)) }
+        item {
+            Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("Your Library", style = MaterialTheme.typography.headlineMedium, color = R.text, modifier = Modifier.weight(1f))
+                IconButton(onClick = { env.graph.playlists.create { env.nav("my/${it.id}") } }) { RIcon(RIcons.plus, 26.dp) }
+            }
+        }
         item { LibRow(RIcons.heartFill, red, "Liked Songs", "Playlist • ${lib.data?.liked ?: 0} songs") { env.nav("liked") } }
         item { LibRow(RIcons.downloaded, dark, "On this phone", "${onPhone.size} songs • plays offline") { env.nav("onphone") } }
         item { LibRow(RIcons.library, dark, "Server library", "${lib.data?.downloaded ?: 0} songs anyone played") { env.nav("serverlib") } }
         item { LibRow(RIcons.clock, grey, "Recently played", "Your history") { env.nav("recent") } }
         item { LibRow(RIcons.heart, dark, "Spotify Liked Songs", "From your Spotify account") { env.nav("spotifyliked") } }
+        item { MyPlaylistRows(mine) }
         items(lib.data?.playlists ?: emptyList()) { c ->
             Row(Modifier.fillMaxWidth().clickable { cardRoute(c)?.let(env.nav) }.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Cover(c.image, null, 64.dp)

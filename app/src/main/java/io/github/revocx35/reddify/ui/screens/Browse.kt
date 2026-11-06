@@ -33,6 +33,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -65,6 +66,7 @@ import io.github.revocx35.reddify.ui.cardRoute
 import io.github.revocx35.reddify.ui.theme.R
 import io.github.revocx35.reddify.ui.theme.RIcons
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.util.Calendar
 
 /** Loads data once per [key], with error + retry. */
@@ -320,6 +322,8 @@ fun PlaylistScreen(id: String) {
     val res = rememberLoad(id) { env.graph.api.value.playlist(id) }
     var extra by remember(id) { mutableStateOf<List<Track>>(emptyList()) }
     var busy by remember { mutableStateOf(false) }
+    var saving by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     val p = res.data
     LaunchedEffect(busy) {
         if (busy && p != null) {
@@ -336,6 +340,28 @@ fun PlaylistScreen(id: String) {
                 item { Header("Playlist", p.playlist.name, p.playlist.image, meta = listOf(p.playlist.owner, "${p.total} songs").filter { it.isNotEmpty() }.joinToString(" • ")) }
                 if (p.playlist.description.isNotEmpty()) item { Text(p.playlist.description, color = R.sub, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(horizontal = 16.dp)) }
                 item { ActionBar(tracks, p.playlist.name, p.playlist.id) }
+                item {
+                    // Spotify playlists are read-only here: copy all songs (up to 1000) into a new Reddify playlist.
+                    TextButton(enabled = !saving, modifier = Modifier.padding(horizontal = 8.dp), onClick = {
+                        saving = true
+                        scope.launch {
+                            val all = tracks.toMutableList()
+                            runCatching {
+                                while (all.size < minOf(p.total, 1000)) {
+                                    val more = env.graph.api.value.playlist(id, all.size).tracks
+                                    if (more.isEmpty()) break
+                                    all += more
+                                }
+                            }
+                            env.graph.playlists.create(all.take(1000).map { it.id }, p.playlist.name) { env.nav("my/${it.id}") }
+                            saving = false
+                        }
+                    }) {
+                        RIcon(RIcons.playlistAdd, 18.dp, tint = R.text)
+                        Spacer(Modifier.width(8.dp))
+                        Text(if (saving) "Saving…" else "Save as my playlist", color = R.text, fontWeight = FontWeight.Bold)
+                    }
+                }
                 itemsIndexed(tracks) { i, t -> TrackRow(t, tracks, i, p.playlist.name, p.playlist.id) }
                 if (tracks.size < p.total) item {
                     Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {

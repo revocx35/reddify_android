@@ -103,7 +103,37 @@ data class PrepareResponse(val id: String = "", val status: String = "none", val
 data class CastResponse(val url: String = "", val contentType: String = "audio/mp4", val cover: String? = null, val track: Track = Track())
 
 @Serializable
-data class LibraryResponse(val liked: Int = 0, val downloaded: Int = 0, val playlists: List<Card> = emptyList())
+data class LibraryResponse(
+    val liked: Int = 0,
+    val downloaded: Int = 0,
+    /** The Spotify account's playlists (read-only). */
+    val playlists: List<Card> = emptyList(),
+    /** The user's own Reddify playlists (editable). */
+    val mine: List<MyPlaylist> = emptyList(),
+)
+
+/** One cover of a Reddify playlist: Spotify CDN URL, with the library's cached cover as fallback. */
+@Serializable
+data class CoverRef(val url: String? = null, val trackId: String = "")
+
+/** A playlist the user made in Reddify (stored on the server, private to its owner). */
+@Serializable
+data class MyPlaylist(
+    val id: Long = 0,
+    val name: String = "",
+    val description: String = "",
+    val count: Int = 0,
+    val durationMs: Long = 0,
+    val covers: List<CoverRef> = emptyList(),
+    val createdAt: Long = 0,
+    val updatedAt: Long = 0,
+)
+
+@Serializable
+data class MyPlaylistResponse(val playlist: MyPlaylist = MyPlaylist(), val tracks: List<Track> = emptyList())
+
+@Serializable
+data class AddTracksResponse(val added: Int = 0, val playlist: MyPlaylist = MyPlaylist())
 
 @Serializable
 data class SpotifyStatus(
