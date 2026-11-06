@@ -44,7 +44,7 @@ class ScreenshotTest {
                     path.startsWith("/api/album/") -> res("album.json")
                     path == "/api/library/downloads" -> res("downloads.json")
                     path == "/api/library/liked/ids" -> "[]"
-                    path == "/api/library" -> """{"liked":12,"downloaded":3,"playlists":[{"kind":"playlist","id":"PPPPPPPPPPPPPPPPPPPPPP","name":"Road trip","subtitle":"By you","image":null}],"hidden":[{"kind":"album","id":"QQQQQQQQQQQQQQQQQQQQQQ","name":"An old album","subtitle":"2019 • Someone","image":null}]}"""
+                    path == "/api/library" -> """{"liked":12,"downloaded":3,"playlists":[{"kind":"playlist","id":"PPPPPPPPPPPPPPPPPPPPPP","name":"Road trip","subtitle":"By you","image":null},{"kind":"playlist","id":"PPPPPPPPPPPPPPPPPPPPPP","name":"Road trip","subtitle":"By you","image":null}],"hidden":[{"kind":"album","id":"QQQQQQQQQQQQQQQQQQQQQQ","name":"An old album","subtitle":"2019 • Someone","image":null}]}"""
                     else -> return MockResponse.Builder().code(404).build()
                 }
                 return MockResponse.Builder().addHeader("Content-Type", "application/json").body(body).build()

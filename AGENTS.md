@@ -33,6 +33,7 @@ and copy it to the server repo's `web/public/reddify.apk` before building the se
 - Commit `keystore.properties`, `local.properties` or keys.
 
 ## Gotchas
+- LazyColumn `key`s must be unique: Spotify's library can list an item twice (0.3.0 crashed on that), so dedupe before keying.
 - Robolectric gives Media3's MediaController a null ComponentName: `PlayerConnection` skips connecting there.
 - The Cast route picker needs AppCompat (`MainActivity : AppCompatActivity`, theme `Theme.AppCompat.NoActionBar`).
 - Not yet exercised on a real device/emulator (0.1.0): check playback, notification and casting on a phone.

@@ -132,8 +132,9 @@ fun LibraryScreen() {
                 .onFailure { toast(it.userMessage()) }
         }
     }
-    val spotify = (lib.data?.playlists ?: emptyList()).filter { "${it.kind}:${it.id}" !in gone }
-    val hidden = lib.data?.hidden ?: emptyList()
+    // Spotify's library can list the same item twice; LazyColumn keys must be unique or Compose throws.
+    val spotify = (lib.data?.playlists ?: emptyList()).filter { "${it.kind}:${it.id}" !in gone }.distinctBy { "${it.kind}:${it.id}" }
+    val hidden = (lib.data?.hidden ?: emptyList()).distinctBy { "${it.kind}:${it.id}" }
     LazyColumn(contentPadding = bottomPad) {
         item {
             Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
