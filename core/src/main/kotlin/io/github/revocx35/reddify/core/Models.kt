@@ -106,8 +106,10 @@ data class CastResponse(val url: String = "", val contentType: String = "audio/m
 data class LibraryResponse(
     val liked: Int = 0,
     val downloaded: Int = 0,
-    /** The Spotify account's playlists (read-only). */
+    /** The Spotify account's playlists, albums and artists (read-only), minus the ones removed in Reddify. */
     val playlists: List<Card> = emptyList(),
+    /** Spotify items removed from Your Library in Reddify only (Spotify keeps them); can be restored. */
+    val hidden: List<Card> = emptyList(),
     /** The user's own Reddify playlists (editable). */
     val mine: List<MyPlaylist> = emptyList(),
 )

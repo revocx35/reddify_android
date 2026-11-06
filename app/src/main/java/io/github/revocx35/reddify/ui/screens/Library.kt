@@ -48,6 +48,22 @@ import io.github.revocx35.reddify.ui.cardRoute
 import io.github.revocx35.reddify.ui.theme.R
 import io.github.revocx35.reddify.ui.theme.RIcons
 import kotlinx.coroutines.delay
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import io.github.revocx35.reddify.core.Card
+import io.github.revocx35.reddify.core.MyPlaylist
+import io.github.revocx35.reddify.core.userMessage
+import kotlinx.coroutines.launch
 
 @Composable
 private fun LibRow(icon: ImageVector, brush: Brush, title: String, sub: String, onClick: () -> Unit) {
@@ -65,36 +81,113 @@ private val red = Brush.linearGradient(listOf(Color(0xFF3A0810), R.accent, Color
 private val dark = Brush.linearGradient(listOf(Color(0xFF111111), Color(0xFF4A1219)))
 private val grey = Brush.linearGradient(listOf(Color(0xFF222222), Color(0xFF555555)))
 
+/** The round ✕ shown next to removable items while Your Library is in edit mode. */
+@Composable
+fun RemoveButton(label: String, onClick: () -> Unit) {
+    IconButton(onClick = onClick, modifier = Modifier.semantics { contentDescription = label }) {
+        Box(Modifier.size(32.dp).clip(CircleShape).background(R.elev2), contentAlignment = Alignment.Center) { RIcon(RIcons.close, 18.dp) }
+    }
+}
+
+@Composable
+private fun CardRow(c: Card, dim: Boolean = false, onClick: (() -> Unit)?, trailing: @Composable () -> Unit = {}) {
+    Row(
+        Modifier.fillMaxWidth().then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier).padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.alpha(if (dim) 0.5f else 1f)) { Cover(c.image, null, 64.dp) }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f).alpha(if (dim) 0.5f else 1f)) {
+            Text(c.name, color = R.text, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(c.subtitle, color = R.sub, style = MaterialTheme.typography.bodySmall, maxLines = 1)
+        }
+        trailing()
+    }
+}
+
 @Composable
 fun LibraryScreen() {
     val env = LocalEnv.current
+    val scope = rememberCoroutineScope()
     val lib = rememberLoad("lib") { env.graph.api.value.library() }
     val onPhone by env.graph.offline.tracks.collectAsState()
     val mine by env.graph.playlists.list.collectAsState()
+    var editing by rememberSaveable { mutableStateOf(false) }
+    var gone by remember { mutableStateOf(emptySet<String>()) }
+    var confirm by remember { mutableStateOf<MyPlaylist?>(null) }
+    val toast = env.graph.playlists::toast
     LaunchedEffect(Unit) { env.graph.playlists.refresh() }
+    fun hide(c: Card) {
+        gone = gone + "${c.kind}:${c.id}"
+        scope.launch {
+            runCatching { env.graph.api.value.hideLibraryItem(c.kind, c.id) }
+                .onSuccess { toast("Removed ${c.name} from Your Library (still on Spotify)"); lib.reload() }
+                .onFailure { gone = gone - "${c.kind}:${c.id}"; toast(it.userMessage()) }
+        }
+    }
+    fun restore(c: Card) {
+        scope.launch {
+            runCatching { env.graph.api.value.unhideLibraryItem(c.kind, c.id) }
+                .onSuccess { gone = gone - "${c.kind}:${c.id}"; toast("${c.name} is back in Your Library"); lib.reload() }
+                .onFailure { toast(it.userMessage()) }
+        }
+    }
+    val spotify = (lib.data?.playlists ?: emptyList()).filter { "${it.kind}:${it.id}" !in gone }
+    val hidden = lib.data?.hidden ?: emptyList()
     LazyColumn(contentPadding = bottomPad) {
         item {
             Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text("Your Library", style = MaterialTheme.typography.headlineMedium, color = R.text, modifier = Modifier.weight(1f))
+                IconButton(onClick = { editing = !editing }, modifier = Modifier.semantics { contentDescription = if (editing) "Done editing" else "Edit Your Library" }) {
+                    RIcon(if (editing) RIcons.check else RIcons.edit, 24.dp, tint = if (editing) R.accent else R.text)
+                }
                 IconButton(onClick = { env.graph.playlists.create { env.nav("my/${it.id}") } }) { RIcon(RIcons.plus, 26.dp) }
             }
+        }
+        if (editing) item {
+            Text(
+                "Tap ✕ to remove. Spotify playlists, albums and artists are only removed from Reddify; your Spotify account keeps them.",
+                color = R.sub, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            )
         }
         item { LibRow(RIcons.heartFill, red, "Liked Songs", "Playlist • ${lib.data?.liked ?: 0} songs") { env.nav("liked") } }
         item { LibRow(RIcons.downloaded, dark, "On this phone", "${onPhone.size} songs • plays offline") { env.nav("onphone") } }
         item { LibRow(RIcons.library, dark, "Server library", "${lib.data?.downloaded ?: 0} songs anyone played") { env.nav("serverlib") } }
         item { LibRow(RIcons.clock, grey, "Recently played", "Your history") { env.nav("recent") } }
         item { LibRow(RIcons.heart, dark, "Spotify Liked Songs", "From your Spotify account") { env.nav("spotifyliked") } }
-        item { MyPlaylistRows(mine) }
-        items(lib.data?.playlists ?: emptyList()) { c ->
-            Row(Modifier.fillMaxWidth().clickable { cardRoute(c)?.let(env.nav) }.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Cover(c.image, null, 64.dp)
-                Spacer(Modifier.width(12.dp))
-                Column {
-                    Text(c.name, color = R.text, style = MaterialTheme.typography.titleMedium)
-                    Text(c.subtitle, color = R.sub, style = MaterialTheme.typography.bodySmall, maxLines = 1)
+        item { MyPlaylistRows(mine, if (editing) { p -> confirm = p } else null) }
+        items(spotify, key = { "${it.kind}:${it.id}" }) { c ->
+            CardRow(c, onClick = { cardRoute(c)?.let(env.nav) }) {
+                if (editing) RemoveButton("Remove ${c.name} from Your Library") { hide(c) }
+            }
+        }
+        if (editing && hidden.isNotEmpty()) {
+            item { Text("Removed (${hidden.size})", color = R.sub, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp)) }
+            items(hidden, key = { "h:${it.kind}:${it.id}" }) { c ->
+                CardRow(c, dim = true, onClick = null) {
+                    OutlinedButton(onClick = { restore(c) }, contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp)) { Text("Restore", color = R.text) }
                 }
             }
         }
+    }
+    confirm?.let { p ->
+        AlertDialog(
+            onDismissRequest = { confirm = null },
+            containerColor = R.elev2,
+            title = { Text("Delete “${p.name}”?", color = R.text) },
+            text = { Text("It only exists in Reddify, so this cannot be undone.", color = R.sub) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirm = null
+                    scope.launch {
+                        runCatching { env.graph.api.value.deletePlaylist(p.id) }
+                            .onSuccess { env.graph.playlists.remove(p.id); toast("Deleted ${p.name}") }
+                            .onFailure { toast(it.userMessage()) }
+                    }
+                }) { Text("Delete", color = R.accent, fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = { TextButton(onClick = { confirm = null }) { Text("Cancel", color = R.text) } },
+        )
     }
 }
 

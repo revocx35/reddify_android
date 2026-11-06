@@ -23,7 +23,9 @@ Client of the Reddify server (API contract: `shared/api.d.ts` in revocx35/reddif
     `/cast/<token>` URL.
   - `playback/PlayerConnection.kt` — UI side: a `MediaController` exposed as a `StateFlow<PlayerUi>`.
   - `ui/` — Compose: `Root.kt` (sign-in gate, navigation, mini player, now playing, queue, cast button),
-    `screens/Browse.kt` (home, search, album, artist, playlist + "Save as my playlist"), `screens/Library.kt`,
+    `screens/Browse.kt` (home, search, album, artist, playlist + "Save as my playlist"), `screens/Library.kt`
+    (pencil = edit mode: ✕ deletes an own playlist after a confirm, or hides a Spotify playlist/album/artist in Reddify
+    only via `PUT /api/library/hidden/{kind}/{id}`; Spotify keeps it; "Removed" lists them with Restore),
     `screens/MyPlaylist.kt` (own playlists: edit details, add songs, remove, move up/down, delete), `screens/Account.kt`
     (sign-in, settings). `Components.kt` has the track menu with "Add to playlist" (`AddToPlaylistDialog`) and the
     2x2 `PlaylistCover`; `data/AppGraph.kt` `MyPlaylists` keeps the list for the library and the picker. Theme tokens = the web UI's; icons generated from the web's `Icon.tsx`.

@@ -74,6 +74,23 @@ class ApiClientTest {
         assertEquals(listOf(7L), c.trackPlaylists("BBBBBBBBBBBBBBBBBBBBBB"))
     }
 
+    @Test fun `library - removing an item only calls Reddify's hidden routes`() = runBlocking {
+        server.enqueue(json("""{"liked":1,"downloaded":2,"playlists":[],"mine":[],"hidden":[{"kind":"album","id":"QQQQQQQQQQQQQQQQQQQQQQ","name":"An album","subtitle":"","image":null}]}"""))
+        server.enqueue(json("""{"ok":true}"""))
+        server.enqueue(json("""{"ok":true}"""))
+        val c = client("rdf_abc")
+        assertEquals("An album", c.library().hidden.single().name)
+        server.takeRequest()
+        c.hideLibraryItem("playlist", "PPPPPPPPPPPPPPPPPPPPPP")
+        val hide = server.takeRequest()
+        assertEquals("PUT", hide.method)
+        assertEquals("/api/library/hidden/playlist/PPPPPPPPPPPPPPPPPPPPPP", hide.url.encodedPath)
+        c.unhideLibraryItem("album", "QQQQQQQQQQQQQQQQQQQQQQ")
+        val restore = server.takeRequest()
+        assertEquals("DELETE", restore.method)
+        assertEquals("/api/library/hidden/album/QQQQQQQQQQQQQQQQQQQQQQ", restore.url.encodedPath)
+    }
+
     @Test fun `refuses a non Reddify server`() = runBlocking {
         server.enqueue(MockResponse.Builder().code(200).addHeader("Content-Type", "text/html").body("<html>").build())
         try { client().state(); fail() } catch (e: ApiException) { assertEquals(ApiException.NOT_REDDIFY, e.code) }

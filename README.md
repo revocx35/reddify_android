@@ -2,7 +2,7 @@
 
 Native Android client for [Reddify](https://github.com/revocx35/reddify), the self-hosted music app with
 Spotify's catalogue. Spotify-style UI in red, background playback (notification, lock screen, headset buttons),
-songs downloaded to the phone for offline play, your own playlists (create, edit, reorder, copy from Spotify),
+songs downloaded to the phone for offline play, your own playlists (create, edit, reorder, copy from Spotify), an editable library (remove items from Reddify only),
 Chromecast, and sign-in through authentik.
 
 The phone only talks to your Reddify server (never to Spotify or YouTube).

@@ -2,6 +2,7 @@ package io.github.revocx35.reddify
 
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
@@ -43,7 +44,7 @@ class ScreenshotTest {
                     path.startsWith("/api/album/") -> res("album.json")
                     path == "/api/library/downloads" -> res("downloads.json")
                     path == "/api/library/liked/ids" -> "[]"
-                    path == "/api/library" -> """{"liked":12,"downloaded":3,"playlists":[]}"""
+                    path == "/api/library" -> """{"liked":12,"downloaded":3,"playlists":[{"kind":"playlist","id":"PPPPPPPPPPPPPPPPPPPPPP","name":"Road trip","subtitle":"By you","image":null}],"hidden":[{"kind":"album","id":"QQQQQQQQQQQQQQQQQQQQQQ","name":"An old album","subtitle":"2019 • Someone","image":null}]}"""
                     else -> return MockResponse.Builder().code(404).build()
                 }
                 return MockResponse.Builder().addHeader("Content-Type", "application/json").body(body).build()
@@ -67,6 +68,10 @@ class ScreenshotTest {
         compose.onNodeWithText("Your Library").performClick()
         compose.waitUntil(10_000) { compose.onAllNodes(androidx.compose.ui.test.hasText("On this phone")).fetchSemanticsNodes().isNotEmpty() }
         compose.onRoot().captureRoboImage("build/screens/library.png")
+        compose.onNodeWithContentDescription("Edit Your Library").performClick()
+        compose.waitUntil(5_000) { compose.onAllNodes(androidx.compose.ui.test.hasText("Removed (1)")).fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithContentDescription("Remove Road trip from Your Library").assertExists()
+        compose.onRoot().captureRoboImage("build/screens/library-edit.png")
     }
 
     @Test fun album() {

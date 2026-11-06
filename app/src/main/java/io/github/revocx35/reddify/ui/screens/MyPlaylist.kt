@@ -274,17 +274,18 @@ private fun EditDetailsDialog(p: MyPlaylist, onDismiss: () -> Unit, onSave: (Str
 
 /** The user's playlists as library rows (Library screen). */
 @Composable
-fun MyPlaylistRows(list: List<MyPlaylist>) {
+fun MyPlaylistRows(list: List<MyPlaylist>, onRemove: ((MyPlaylist) -> Unit)? = null) {
     val env = LocalEnv.current
     Column {
         for (p in list) {
-            Row(Modifier.fillMaxWidth().clickable { env.nav("my/${p.id}") }.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().clickable { env.nav("my/${p.id}") }.padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 PlaylistCover(p.covers, 64.dp)
                 Spacer(Modifier.width(12.dp))
-                Column {
+                Column(Modifier.weight(1f)) {
                     Text(p.name, color = R.text, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text("Playlist • ${p.count} songs", color = R.sub, style = MaterialTheme.typography.bodySmall)
                 }
+                if (onRemove != null) RemoveButton("Delete ${p.name}") { onRemove(p) }
             }
         }
     }

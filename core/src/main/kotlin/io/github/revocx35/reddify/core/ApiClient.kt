@@ -119,6 +119,9 @@ class ApiClient(private val http: OkHttpClient, val base: HttpUrl, @Volatile var
 
     // library
     suspend fun library() = get("/api/library", LibraryResponse.serializer())
+    /** Removes a Spotify playlist/album/artist from Your Library in Reddify only; Spotify is not changed. */
+    suspend fun hideLibraryItem(kind: String, id: String) = send("PUT", "/api/library/hidden/${enc(kind)}/${enc(id)}", "{}", ok)
+    suspend fun unhideLibraryItem(kind: String, id: String) = send("DELETE", "/api/library/hidden/${enc(kind)}/${enc(id)}", "{}", ok)
     suspend fun liked() = get("/api/library/liked", ListSerializer(Track.serializer()))
     suspend fun likedIds() = get("/api/library/liked/ids", ListSerializer(String.serializer()))
     suspend fun like(id: String, on: Boolean) = send(if (on) "PUT" else "DELETE", "/api/library/liked/${enc(id)}", "{}", ok)
