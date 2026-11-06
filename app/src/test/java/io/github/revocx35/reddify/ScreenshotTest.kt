@@ -3,6 +3,9 @@ package io.github.revocx35.reddify
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.onNodeWithContentDescription
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
@@ -33,13 +36,24 @@ class ScreenshotTest {
 
     private fun res(name: String) = javaClass.getResource("/$name")!!.readText()
 
+    /** Real home answer plus what Spotify sometimes sends: a shelf title twice and the same card twice in a row in one shelf. */
+    private fun homeWithDuplicates(): String {
+        val home = kotlinx.serialization.json.Json.parseToJsonElement(res("home.json")).jsonObject
+        val sections = home["sections"]!!.jsonArray
+        val first = sections[0].jsonObject
+        val firstItems = first["items"]!!.jsonArray
+        val dupCards = kotlinx.serialization.json.JsonObject(first + ("items" to kotlinx.serialization.json.JsonArray(listOf(firstItems[0], firstItems[0]) + firstItems.drop(1))))
+        val all = kotlinx.serialization.json.JsonArray(listOf(dupCards) + sections.drop(1) + first)
+        return kotlinx.serialization.json.JsonObject(home + ("sections" to all)).toString()
+    }
+
     @Before fun start() {
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 val path = request.url.encodedPath
                 val body = when {
                     path == "/api/auth/state" -> """{"setupNeeded":false,"localLogin":true,"oidc":{"enabled":true,"label":"authentik"},"me":{"id":1,"username":"salih","displayName":"salih","role":"admin"}}"""
-                    path == "/api/home" -> res("home.json")
+                    path == "/api/home" -> homeWithDuplicates()
                     path == "/api/search" -> res("search.json")
                     path.startsWith("/api/album/") -> res("album.json")
                     path == "/api/library/downloads" -> res("downloads.json")
@@ -62,6 +76,10 @@ class ScreenshotTest {
         compose.setContent { ReddifyRoot(app.graph, app.player) }
         compose.waitUntil(15_000) { compose.onAllNodes(androidx.compose.ui.test.hasText("Trending songs")).fetchSemanticsNodes().isNotEmpty() }
         compose.onRoot().captureRoboImage("build/screens/home.png")
+        // Scroll the whole home: every shelf (with its duplicate title / duplicate card) gets composed.
+        val homeList = compose.onAllNodes(androidx.compose.ui.test.hasScrollToIndexAction())[0]
+        for (i in 0..7) homeList.performScrollToIndex(i)
+        compose.waitForIdle()
         compose.onNodeWithText("Search").performClick()
         compose.waitForIdle()
         compose.onRoot().captureRoboImage("build/screens/search-empty.png")

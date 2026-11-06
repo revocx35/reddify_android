@@ -243,7 +243,9 @@ fun CardTile(c: Card, width: Dp = 150.dp) {
 fun Shelf(title: String, items: List<Card>) {
     if (items.isEmpty()) return
     SectionTitle(title)
-    LazyRow(contentPadding = PaddingValues(horizontal = 8.dp)) { items(items, key = { "${it.kind}:${it.id}" }) { CardTile(it) } }
+    // Spotify can put the same card twice in one shelf: keys must be unique or Compose throws while scrolling.
+    val unique = items.distinctBy { "${it.kind}:${it.id}" }
+    LazyRow(contentPadding = PaddingValues(horizontal = 8.dp)) { items(unique, key = { "${it.kind}:${it.id}" }) { CardTile(it) } }
 }
 
 @Composable

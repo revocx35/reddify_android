@@ -127,7 +127,8 @@ fun HomeScreen(displayName: String) {
                 if (h.offline) item { OfflineBanner() }
                 val quick = h.sections.flatMap { it.items }.filter { it.kind == "album" || it.kind == "playlist" }.take(6)
                 if (quick.isNotEmpty()) item { QuickGrid(quick) }
-                for (s in h.sections) item(key = s.title) { Shelf(s.title, s.items) }
+                // Keyed by position: two shelves can share a title ("Made for you" twice crashed 0.2.0 / 0.3.x while scrolling).
+                h.sections.forEachIndexed { i, s -> item(key = "shelf:$i") { Shelf(s.title, s.items) } }
             }
         }
     }
