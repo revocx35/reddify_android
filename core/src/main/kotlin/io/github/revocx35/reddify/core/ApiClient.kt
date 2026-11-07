@@ -115,6 +115,12 @@ class ApiClient(private val http: OkHttpClient, val base: HttpUrl, @Volatile var
     suspend fun album(id: String) = get("/api/album/${enc(id)}", AlbumResponse.serializer())
     suspend fun artist(id: String) = get("/api/artist/${enc(id)}", ArtistResponse.serializer())
     suspend fun playlist(id: String, offset: Int = 0) = get("/api/playlist/${enc(id)}?offset=$offset", PlaylistResponse.serializer())
+    /** Smart Shuffle: recommendations seeded from the playing list (never one of [trackIds]); 1..500 ids, count 1..50. */
+    suspend fun smartShuffle(trackIds: List<String>, count: Int) = send(
+        "POST", "/api/smart-shuffle",
+        buildJsonObject { put("trackIds", JsonArray(trackIds.take(500).map { JsonPrimitive(it) })); put("count", count.coerceIn(1, 50)) }.toString(),
+        SmartShuffleResponse.serializer(),
+    )
     suspend fun recommendations(id: String) = get("/api/track/${enc(id)}/recommendations", ListSerializer(Track.serializer()))
 
     // library

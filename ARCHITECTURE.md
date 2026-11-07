@@ -21,7 +21,12 @@ Client of the Reddify server (API contract: `shared/api.d.ts` in revocx35/reddif
   - `playback/CastSupport.kt` — Google Cast (Default Media Receiver). Mirroring: while casting, the local player runs
     muted and track changes / play / pause / seek are repeated on the Chromecast, which loads the server's signed
     `/cast/<token>` URL.
-  - `playback/PlayerConnection.kt` — UI side: a `MediaController` exposed as a `StateFlow<PlayerUi>`.
+  - `playback/PlayerConnection.kt` — UI side: a `MediaController` exposed as a `StateFlow<PlayerUi>`. Also Smart
+    Shuffle: the shuffle button cycles off → shuffle → Smart Shuffle; on, it sends the queue's ids to
+    `POST /api/smart-shuffle` (about one recommendation per three songs) and adds the answer with `addMediaItems`
+    (Media3's shuffle order places each one randomly). Those items carry `reddify.smart` in their metadata extras
+    (sparkle in the queue/mini player, "Recommended by Smart Shuffle" on now playing) and are removed again when it is
+    turned off. A list started meanwhile drops a late answer (`listSeq`).
   - `ui/` — Compose: `Root.kt` (sign-in gate, navigation, mini player, now playing (adaptive: width capped, cover shrinks to fit on foldables/landscape), queue, cast button),
     `screens/Browse.kt` (home, search, album, artist, playlist + "Save as my playlist"), `screens/Library.kt`
     (pencil = edit mode: ✕ deletes an own playlist after a confirm, or hides a Spotify playlist/album/artist in Reddify

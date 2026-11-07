@@ -221,7 +221,10 @@ private fun MiniPlayer(onExpand: () -> Unit) {
             Cover(t.cover, t.id, 40.dp)
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
-                Text(t.name, color = R.text, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (t.id in ui.smartIds) SmartMark()
+                    Text(t.name, color = R.text, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
+                }
                 Text(device?.let { "Casting to $it" } ?: t.artistLine, color = if (device != null) R.accent else R.sub, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall)
             }
             LikeButton(t.id)
@@ -293,7 +296,9 @@ private fun NowPlaying(onClose: () -> Unit, onQueue: () -> Unit) {
             }
         }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-            IconButton(onClick = { env.player.shuffle() }) { RIcon(RIcons.shuffle, 26.dp, tint = if (ui.shuffle) R.accent else R.text) }
+            IconButton(onClick = { env.player.cycleShuffle() }) {
+                RIcon(if (ui.smart) RIcons.shuffleSmart else RIcons.shuffle, 26.dp, tint = if (ui.shuffle) R.accent else R.text)
+            }
             IconButton(onClick = { env.player.prev() }) { RIcon(RIcons.prev, 34.dp) }
             Box(Modifier.size(68.dp).clip(CircleShape).background(R.text).clickable { env.player.toggle() }, contentAlignment = Alignment.Center) {
                 if (ui.buffering && ui.playing) CircularProgressIndicator(Modifier.size(28.dp), color = Color.Black, strokeWidth = 3.dp)
@@ -306,7 +311,7 @@ private fun NowPlaying(onClose: () -> Unit, onQueue: () -> Unit) {
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             CastButton()
-            Text(device?.let { "Playing on $it" } ?: ui.error ?: "", color = if (ui.error != null && device == null) R.danger else R.accent, style = MaterialTheme.typography.bodySmall)
+            Text(device?.let { "Playing on $it" } ?: ui.error ?: (if (t.id in ui.smartIds) "Recommended by Smart Shuffle" else ""), color = if (ui.error != null && device == null) R.danger else R.accent, style = MaterialTheme.typography.bodySmall)
         }
     }
     }
@@ -322,6 +327,7 @@ private fun QueueSheet(onClose: () -> Unit) {
             Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onClose) { RIcon(RIcons.down, 26.dp) }
                 Text("Queue", style = MaterialTheme.typography.titleLarge, color = R.text)
+                if (ui.smart) Text("  · Smart Shuffle", color = R.sub, style = MaterialTheme.typography.bodySmall)
             }
         }
         itemsIndexed(ui.queue) { i, t ->
@@ -332,7 +338,10 @@ private fun QueueSheet(onClose: () -> Unit) {
                 Cover(t.cover, t.id, 44.dp)
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(t.name, color = if (i == ui.index) R.accent else if (i < ui.index) R.muted else R.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (t.id in ui.smartIds) SmartMark()
+                        Text(t.name, color = if (i == ui.index) R.accent else if (i < ui.index) R.muted else R.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
                     Text(t.artistLine, color = R.sub, maxLines = 1, style = MaterialTheme.typography.bodySmall)
                 }
             }
@@ -340,6 +349,10 @@ private fun QueueSheet(onClose: () -> Unit) {
         item { Spacer(Modifier.height(24.dp)) }
     }
 }
+
+/** The sparkle in front of a song Smart Shuffle added (same mark as the web). */
+@Composable
+private fun SmartMark() = RIcon(RIcons.sparkle, 12.dp, tint = R.accent, modifier = Modifier.padding(end = 4.dp))
 
 @Suppress("unused")
 @Composable

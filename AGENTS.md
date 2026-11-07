@@ -13,7 +13,7 @@ Native client for the Reddify server (github.com/revocx35/reddify). Read [ARCHIT
 
 ## Commands
 ```bash
-./gradlew --max-workers=1 :core:test :app:testDebugUnitTest                                 # 7 + 4 tests (screenshots: phone, unfolded foldable, landscape)
+./gradlew --max-workers=1 :core:test :app:testDebugUnitTest                                 # 8 + 5 tests (screenshots: phone, unfolded foldable, landscape)
 ./gradlew --max-workers=1 :app:testDebugUnitTest -Proborazzi.test.record=true --rerun-tasks # screenshots in app/build/screens
 ./gradlew --max-workers=1 :app:assembleRelease
 ```
@@ -39,3 +39,4 @@ and copy it to the server repo's `web/public/reddify.apk` before building the se
 - Robolectric gives Media3's MediaController a null ComponentName: `PlayerConnection` skips connecting there.
 - The Cast route picker needs AppCompat (`MainActivity : AppCompatActivity`, theme `Theme.AppCompat.NoActionBar`).
 - Not yet exercised on a real device/emulator (0.1.0): check playback, notification and casting on a phone.
+- Smart Shuffle state lives in `PlayerConnection` (app process), not in the service: a queue rebuilt by the system (e.g. after process death) keeps the `reddify.smart` items but the mode is off; turning it on/off again cleans up.

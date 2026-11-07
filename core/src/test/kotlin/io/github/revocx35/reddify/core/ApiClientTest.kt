@@ -49,6 +49,19 @@ class ApiClientTest {
         assertTrue(body.contains("\"client\":\"app\""))
     }
 
+    @Test fun `smart shuffle - sends the playing list and reads the recommendations`() = runBlocking {
+        server.enqueue(json("""{"tracks":[{"id":"BBBBBBBBBBBBBBBBBBBBBB","name":"Rec","artists":[],"album":null,"cover":null,"durationMs":1000,"explicit":false,"playable":true}],"offline":false}"""))
+        val ids = List(600) { "A".repeat(21) + (it % 10) }
+        val r = client("rdf_abc").smartShuffle(ids, 99)
+        assertEquals(listOf("BBBBBBBBBBBBBBBBBBBBBB"), r.tracks.map { it.id })
+        val req = server.takeRequest()
+        assertEquals("POST", req.method)
+        assertEquals("/api/smart-shuffle", req.url.encodedPath)
+        val body = req.body!!.utf8()
+        assertTrue(body.contains("\"count\":50"))
+        assertEquals(500, Regex("\"A{21}\\d\"").findAll(body).count())
+    }
+
     @Test fun `own playlists - requests and answers match the server contract`() = runBlocking {
         val pl = """{"id":7,"name":"Road trip","description":"","count":1,"durationMs":200000,"covers":[{"url":null,"trackId":"AAAAAAAAAAAAAAAAAAAAAA"}],"createdAt":1,"updatedAt":2}"""
         server.enqueue(json("""{"playlist":$pl,"tracks":[]}"""))

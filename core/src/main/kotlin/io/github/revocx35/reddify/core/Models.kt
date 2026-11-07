@@ -137,6 +137,10 @@ data class MyPlaylistResponse(val playlist: MyPlaylist = MyPlaylist(), val track
 @Serializable
 data class AddTracksResponse(val added: Int = 0, val playlist: MyPlaylist = MyPlaylist())
 
+/** POST /api/smart-shuffle: Spotify's recommendations to mix into a shuffled queue. */
+@Serializable
+data class SmartShuffleResponse(val tracks: List<Track> = emptyList(), val offline: Boolean = false)
+
 @Serializable
 data class SpotifyStatus(
     val instance: Int = 0,

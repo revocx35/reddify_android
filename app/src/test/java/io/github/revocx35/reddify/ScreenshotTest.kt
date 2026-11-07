@@ -50,19 +50,29 @@ class ScreenshotTest {
 
 
     /** Opens the full-screen player with a song "playing" (the MediaController does not connect under Robolectric). */
-    private fun openNowPlaying(app: ReddifyApp, file: String) {
+    private fun openNowPlaying(app: ReddifyApp, file: String, smart: Boolean = false) {
         val t = io.github.revocx35.reddify.core.Track(
             id = "0DiWol3AO6WpXZgp0goxAV", name = "One More Time", durationMs = 320_000,
             artists = listOf(io.github.revocx35.reddify.core.ArtistRef("4tZwfgrHOc3mvqYlEYSvVi", "Daft Punk")),
             album = io.github.revocx35.reddify.core.AlbumRef("2noRn2Aes5aoNVsU6iWThc", "Discovery"),
         )
-        app.player.showForTests(io.github.revocx35.reddify.playback.PlayerUi(current = t, positionMs = 95_000, durationMs = 320_000, queue = listOf(t), index = 0, contextName = "Discovery"))
+        app.player.showForTests(io.github.revocx35.reddify.playback.PlayerUi(current = t, positionMs = 95_000, durationMs = 320_000, queue = listOf(t), index = 0, contextName = "Discovery",
+            shuffle = smart, smart = smart, smartIds = if (smart) setOf(t.id) else emptySet()))
         compose.waitUntil(5_000) { compose.onAllNodes(androidx.compose.ui.test.hasText("One More Time")).fetchSemanticsNodes().isNotEmpty() }
         compose.onAllNodes(androidx.compose.ui.test.hasText("One More Time"))[0].performClick()
         compose.waitUntil(5_000) { compose.onAllNodes(androidx.compose.ui.test.hasText("5:20")).fetchSemanticsNodes().isNotEmpty() }
         // The controls must be on screen, not pushed below it by the cover.
         compose.onNodeWithText("5:20").assertIsDisplayed()
+        if (smart) compose.onNodeWithText("Recommended by Smart Shuffle").assertIsDisplayed()
         compose.onRoot().captureRoboImage("build/screens/$file")
+    }
+
+    /** Smart Shuffle: a recommended song says so on the now-playing screen (and the shuffle button shows the sparkle). */
+    @Test fun smartShuffle() {
+        val app = ApplicationProvider.getApplicationContext<ReddifyApp>()
+        compose.setContent { ReddifyRoot(app.graph, app.player) }
+        compose.waitUntil(15_000) { compose.onAllNodes(androidx.compose.ui.test.hasText("Trending songs")).fetchSemanticsNodes().isNotEmpty() }
+        openNowPlaying(app, "smart-shuffle-nowplaying.png", smart = true)
     }
 
     @Before fun start() {

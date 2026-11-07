@@ -11,7 +11,7 @@ import io.github.revocx35.reddify.playback.PlayerConnection
 class ReddifyApp : Application(), SingletonImageLoader.Factory {
     lateinit var graph: AppGraph
         private set
-    val player: PlayerConnection by lazy { PlayerConnection(this, graph.scope) }
+    val player: PlayerConnection by lazy { PlayerConnection(this, graph.scope) { graph.api.value } }
 
     override fun onCreate() {
         super.onCreate()
